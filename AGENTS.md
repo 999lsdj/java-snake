@@ -5,6 +5,9 @@
 Java 17 + Swing 写的贪吃蛇，第一个用于简历展示的开源项目。
 远程仓库：`https://github.com/999lsdj/java-snake`（public）。
 
+跨仓库的总纲、环境说明、协作契约与最新进度见 `E:\李惠\java-study\docs\总纲与交接.md`，
+新会话先读那一份。
+
 ## 里程碑
 
 | 里程碑 | 内容 | 状态 |
