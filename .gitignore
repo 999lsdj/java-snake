@@ -1,0 +1,26 @@
+# Maven 编译产物
+target/
+
+# 编译出的 class 文件
+*.class
+
+# IDE 本地配置（按 pom.xml 自动生成，不入库）
+.classpath
+.project
+.settings/
+.idea/
+*.iml
+.vscode/
+
+# 排行榜、存档等运行时产生的文件
+*.log
+save/
+
+# 本地配置与密钥：绝对不要提交
+config.properties
+*.local
+.env
+
+# 操作系统垃圾文件
+Thumbs.db
+Desktop.ini
