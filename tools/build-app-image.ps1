@@ -105,7 +105,20 @@ Write-Output ("免安装版已生成: " + $exe + "（解压后约 " + $sizeMb + 
 if (-not $SkipZip) {
     New-Item -ItemType Directory -Force -Path $distDir | Out-Null
     $zip = Join-Path $distDir ("java-snake-" + $version + "-windows-x64.zip")
-    if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
+
+    # 先清掉 dist 里的旧压缩包，只留这次生成的。
+    # 删除前检查路径确实落在 dist 目录内，避免手滑改错变量导致误删。
+    $distFull = [IO.Path]::GetFullPath($distDir) + [IO.Path]::DirectorySeparatorChar
+    Get-ChildItem -Path $distDir -Filter 'java-snake-*-windows-x64.zip' -File -ErrorAction SilentlyContinue |
+        ForEach-Object {
+            $full = [IO.Path]::GetFullPath($_.FullName)
+            if (-not $full.StartsWith($distFull, [StringComparison]::OrdinalIgnoreCase)) {
+                throw "拒绝删除 dist 目录之外的路径：$full"
+            }
+            Remove-Item -LiteralPath $full -Force
+            Write-Output ("已清理旧压缩包: " + $_.Name)
+        }
+
     Compress-Archive -Path $imageDir -DestinationPath $zip -CompressionLevel Optimal
     Write-Output ("压缩包: " + $zip)
     Write-Output ("大小  : " + [Math]::Round((Get-Item -LiteralPath $zip).Length / 1MB, 1) + " MB")
