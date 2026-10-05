@@ -1,49 +1,81 @@
 # java-snake
 
-用 Java 17 + Swing 写的贪吃蛇。这是第一个正式项目，目标是走完一遍完整的开发流程：
-需求 → 设计 → 编码 → 测试 → 打包 → 发布。
+用 Java 17 + Swing 写的贪吃蛇，零第三方依赖，`mvn package` 之后得到一个可以直接双击运行的 jar。
 
-## 运行画面
+![运行画面](docs/screenshot-final.png)
 
-![M3 运行画面](docs/screenshot-m3.png)
+状态栏显示分数、最高分、蛇长、当前速度和实时帧率；灰色方块是障碍物，橙色圆点是食物。
+（这张图不是摆拍：先真实打了一局撞墙把最高分刷到 19，再重开打第二局吃到 10 分并开出折角，然后由项目自己的绘制代码渲染出来。）
 
-800×600 窗口。顶部状态栏显示分数、蛇的长度、当前方向和实测帧率；橙色圆点是食物，正方形的分节是蛇。
-（图中蛇已经吃到 10 个食物、长度 13。截图由项目自己的绘制代码离屏渲染生成，数字是真实跑出来的。
-M1、M2 的画面分别见 `docs/screenshot-m1.png`、`docs/screenshot-m2.png`。）
+## 下载与运行
 
-## 当前进度
+**玩家**：到 [Releases](https://github.com/999lsdj/java-snake/releases/latest) 下载 `java-snake-1.0.0.jar`，
+双击即可；命令行运行也可以：
 
-| 里程碑 | 内容 | 状态 |
-| --- | --- | --- |
-| M1 | Swing 窗口 + 固定步长游戏循环 | 已完成 |
-| M2 | 蛇的移动、键盘控制、撞墙判定 | 已完成 |
-| M3 | 食物、成长、分数、自撞判定 | 已完成 |
-| M4 | 结束画面、R 键快速重开、打包发布 | 进行中 |
+```
+java -jar java-snake-1.0.0.jar
+```
 
-## 环境要求
-
-- JDK 17
-- Maven 3.9.16
-
-## 运行
+**开发者**：克隆仓库后自行构建（需要 JDK 17 和 Maven）：
 
 ```
 mvn clean package
-java -jar target/java-snake-0.1.0.jar
+java -jar target/java-snake-1.0.0.jar
 ```
 
-开发期想快速跑一遍，不想打包：
+## 玩法
 
-```
-mvn -q compile
-java -cp target/classes com.example.snake.Main
-```
+| 操作 | 效果 |
+| --- | --- |
+| 方向键 | 转向（不能 180 度掉头，连续快速转向会被缓存） |
+| R 键 | 游戏结束后立刻重开一局 |
 
-自检模式（跑 1.5 秒后自动输出帧数并退出，用于确认环境没问题）：
+- 吃到食物：蛇身加长一格、分数 +1
+- 每吃满 5 个食物：速度提升一档（8 格/秒起步，15 格/秒封顶）
+- 撞墙、撞到自己、撞到障碍物：本局结束
+- 每局随机摆放 14 个障碍物（绝不会挡在出生区）
+- 最高分自动保存到 `~/.java-snake/highscore.txt`
 
-```
-java -cp target/classes com.example.snake.Main --selftest
-```
+## 技术栈
+
+- Java 17（用 record、switch 表达式、文本块等新语法）
+- Swing（JDK 自带，无第三方依赖）
+- Maven + JUnit 5（29 个单元测试）
+- 固定步长游戏循环：逻辑更新与渲染解耦，速度与帧率互相独立
+
+## 代码结构
+
+| 文件 | 职责 |
+| --- | --- |
+| `Main.java` | 程序入口，装配窗口与游戏循环，带 `--selftest` 自检模式 |
+| `SnakeFrame.java` | 主窗口，负责把各部分接起来 |
+| `GameLoop.java` | 固定步长游戏循环（纯逻辑，不依赖 Swing） |
+| `SnakeGame.java` | 规则核心：蛇、食物、障碍物、分数、速度、碰撞判定（纯逻辑） |
+| `Snake.java` | 蛇的身体，用 `ArrayDeque` 实现头进尾出 |
+| `Direction.java` / `GridPoint.java` | 方向与网格坐标 |
+| `FoodSpawner.java` / `ObstacleLayout.java` / `HighScoreStore.java` | 三个"外部世界"的接口：食物位置、障碍布局、存档 |
+| `GamePanel.java` | 绘制与键盘输入 |
+| `GameConfig.java` | 窗口、网格、速度等常量，带启动自检 |
+
+## 两个设计要点
+
+**一、逻辑与界面彻底分离。** `SnakeGame`、`Snake`、`GameLoop` 都不认识 Swing，
+所以整套规则可以在没有图形界面的环境里跑测试——29 个测试里有 26 个是纯逻辑测试。
+
+**二、随机、文件、时间这些东西全部抽到接口后面。** 正式运行给随机实现，测试给固定实现。
+否则"吃到食物之后会怎样"这类断言根本无从写起。
+
+## 开发过程
+
+项目按五个里程碑推进，每个里程碑都有对应的讲解卡（在 `docs/` 下）：
+
+| 里程碑 | 内容 |
+| --- | --- |
+| M1 | Swing 窗口 + 固定步长游戏循环 |
+| M2 | 蛇的移动、键盘控制、撞墙判定 |
+| M3 | 食物、成长、分数、自撞判定 |
+| M4 | 结束画面、R 键快速重开、打包发布 |
+| M5 | 障碍物、难度递增、最高分存档 |
 
 ## 测试
 
@@ -51,29 +83,8 @@ java -cp target/classes com.example.snake.Main --selftest
 mvn test
 ```
 
-## 代码结构
-
-| 文件 | 职责 |
-| --- | --- |
-| `Main.java` | 程序入口，装配窗口与游戏循环 |
-| `SnakeFrame.java` | 主窗口 |
-| `GamePanel.java` | 画布：绘制网格、蛇、状态栏，接收方向键 |
-| `SnakeGame.java` | 游戏状态：蛇、方向、速度换算、撞墙判定（纯逻辑） |
-| `FoodSpawner.java` | 食物生成策略（可替换，便于测试） |
-| `Snake.java` | 蛇的身体，头进尾出 |
-| `Direction.java` | 四个方向及各自的位移量 |
-| `GridPoint.java` | 网格坐标（record） |
-| `GameLoop.java` | 固定步长游戏循环（纯逻辑，不依赖 Swing） |
-| `GameConfig.java` | 窗口尺寸、帧率等常量 |
-
-设计上有一条硬规则：**游戏循环不能依赖 Swing**。这样它才能在单元测试里被验证，
-将来换渲染方式（比如换成 JavaFX）也不用重写。
-
-## 讲解卡
-
-- [M1 讲解卡](docs/M1-讲解卡.md)
-- [M2 讲解卡](docs/M2-讲解卡.md)
-- [M3 讲解卡](docs/M3-讲解卡.md)
+29 个测试覆盖：游戏循环的定步长换算、方向与反向判定、蛇身的生长与移动、
+吃食物、四种结束原因、贴着尾巴走的合法性、速度递增、无障碍物时的出生区约束、存档的读写与容错。
 
 ## 许可
 

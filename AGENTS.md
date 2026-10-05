@@ -15,8 +15,10 @@ Java 17 + Swing 写的贪吃蛇，第一个用于简历展示的开源项目。
 | M1 | Swing 窗口 + 固定步长游戏循环 | 已完成 |
 | M2 | 蛇的移动、键盘控制、撞墙判定 | 已完成 |
 | M3 | 食物、成长、分数、自撞判定 | 已完成 |
-| M4 | 结束画面、R 键快速重开、打包发布 | 进行中 |
-| M5 | 障碍物、难度递增、最高分存档 | 未开始 |
+| M4 | 结束画面、R 键快速重开、打包发布 | 已完成 |
+| M5 | 障碍物、难度递增、最高分存档 | 已完成 |
+
+项目已经发布 v1.0.0（29 个单元测试，可运行 jar 在 GitHub Release）。后续可选项见 `docs/` 与总纲。
 
 ## 协作方式（最重要）
 
@@ -46,7 +48,7 @@ Java 17 + Swing 写的贪吃蛇，第一个用于简历展示的开源项目。
 ```
 mvn clean package                                                      编译、跑测试、打包
 mvn test                                                               只跑测试
-java -jar target/java-snake-0.1.0.jar                                  运行游戏
+java -jar target/java-snake-1.0.0.jar                                  运行游戏
 java -cp target/classes com.example.snake.Main --selftest              自检（1.5 秒后自动退出）
 ```
 
