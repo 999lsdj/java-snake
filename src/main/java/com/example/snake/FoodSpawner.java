@@ -1,6 +1,8 @@
 package com.example.snake;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.Random;
 
 /**
  * 决定新食物放在哪个格子。
@@ -20,9 +22,15 @@ public interface FoodSpawner {
     /**
      * 从空格子里挑一个放食物。
      *
-     * @param freeCells 当前所有没被蛇占据的格子（保证非空）
+     * @param freeCells 当前所有没被蛇或障碍物占据的格子（保证非空）
      * @param head      蛇头当前位置，某些策略会想参考它
      * @return 选中的格子，必须来自 {@code freeCells}
      */
     GridPoint next(List<GridPoint> freeCells, GridPoint head);
+
+    /** 正式运行用的策略：等概率随机挑一个空格 */
+    static FoodSpawner random(Random random) {
+        Objects.requireNonNull(random, "random 不能为 null");
+        return (freeCells, head) -> freeCells.get(random.nextInt(freeCells.size()));
+    }
 }

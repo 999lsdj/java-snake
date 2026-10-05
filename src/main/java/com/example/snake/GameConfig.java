@@ -10,7 +10,7 @@ package com.example.snake;
 public final class GameConfig {
 
     /** 窗口标题 */
-    public static final String TITLE = "贪吃蛇 — java-snake M2";
+    public static final String TITLE = "贪吃蛇 — java-snake 1.0";
 
     /** 画布宽度（像素） */
     public static final int WINDOW_WIDTH = 800;
@@ -18,7 +18,7 @@ public final class GameConfig {
     /** 画布高度（像素） */
     public static final int WINDOW_HEIGHT = 600;
 
-    /** 顶部状态栏高度（像素）。这条区域不画网格，用来显示帧率、长度和方向 */
+    /** 顶部状态栏高度（像素）。这条区域不画网格，用来显示分数、速度等信息 */
     public static final int HUD_HEIGHT = 40;
 
     /** 目标帧率：游戏循环每秒更新 60 次 */
@@ -33,13 +33,14 @@ public final class GameConfig {
     /** 游戏区域有多少行（纵向格子数），要扣掉顶部状态栏 */
     public static final int ROWS = (WINDOW_HEIGHT - HUD_HEIGHT) / TILE_SIZE;
 
-    /**
-     * 蛇每秒移动多少格。
-     *
-     * <p>注意它和帧率是两回事：循环每秒跑 60 帧，但蛇每秒只走 8 格。
-     * 混为一谈的后果是蛇以每帧一格的速度飞出去，根本没法玩。
-     */
-    public static final int MOVES_PER_SECOND = 8;
+    /** 开局速度：每秒移动多少格（之后每吃 5 个食物自动加一档） */
+    public static final int INITIAL_MOVES_PER_SECOND = 8;
+
+    /** 蛇的初始长度（格） */
+    public static final int INITIAL_SNAKE_LENGTH = 3;
+
+    /** 每局随机摆放多少个障碍物 */
+    public static final int OBSTACLE_COUNT = 14;
 
     static {
         if (WINDOW_WIDTH % TILE_SIZE != 0) {
@@ -48,8 +49,14 @@ public final class GameConfig {
         if ((WINDOW_HEIGHT - HUD_HEIGHT) % TILE_SIZE != 0) {
             throw new IllegalStateException("扣掉状态栏之后的可用高度必须是网格尺寸的整数倍");
         }
-        if (MOVES_PER_SECOND <= 0 || MOVES_PER_SECOND > TARGET_FPS) {
+        if (INITIAL_MOVES_PER_SECOND <= 0 || INITIAL_MOVES_PER_SECOND > TARGET_FPS) {
             throw new IllegalStateException("每秒移动次数必须落在 1 到 TARGET_FPS 之间");
+        }
+        if (INITIAL_SNAKE_LENGTH < 1) {
+            throw new IllegalStateException("蛇的初始长度至少为 1");
+        }
+        if (OBSTACLE_COUNT < 0) {
+            throw new IllegalStateException("障碍物数量不能为负数");
         }
     }
 

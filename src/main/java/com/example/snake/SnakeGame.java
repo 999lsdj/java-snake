@@ -3,17 +3,21 @@ package com.example.snake;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
+import java.util.Set;
 
 /**
- * 游戏状态：蛇、食物、分数，以及"什么时候该走一格"。
+ * 游戏状态：蛇、食物、障碍物、分数，以及"什么时候该走一格"。
  *
  * <p>它完全不认识 Swing，所以能在没有图形界面的环境里跑单元测试——这是 M1 定下的规矩。
+ * 随机性和文件读写也都不在这里，而是通过 {@link FoodSpawner}、{@link ObstacleLayout}
+ * 注入进来，于是这个类本身是完全确定的、可测的。
  *
  * <p><b>速度控制</b>复用了 M1 的思路：游戏循环每秒固定调用 {@link #tick()} 60 次，
- * 这里再用一个"蓄水"计数器把 60 次调用折算成每秒 8 次移动。M1 用水位攒的是纳秒，
+ * 这里再用一个"蓄水"计数器把 60 次调用折算成每秒若干次移动。M1 用水位攒的是纳秒，
  * 这里攒的是帧数，本质是同一个算法。
  */
 public final class SnakeGame {
@@ -22,10 +26,12 @@ public final class SnakeGame {
     public enum State {
         /** 正常进行中 */
         RUNNING,
-        /** 撞到墙，已经停住 */
+        /** 撞到墙 */
         HIT_WALL,
-        /** 咬到自己，已经停住 */
+        /** 咬到自己 */
         HIT_SELF,
+        /** 撞到障碍物 */
+        HIT_OBSTACLE,
         /** 整块场地被填满（实际很难达成，但必须处理，否则会出现空指针） */
         WON
     }
@@ -33,35 +39,54 @@ public final class SnakeGame {
     /** 最多缓存两次待生效的转向，防止玩家快速连按导致中间那次被吞掉 */
     private static final int MAX_PENDING_TURNS = 2;
 
+    /** 每吃到这么多食物，速度提升一档 */
+    private static final int SCORE_PER_SPEEDUP = 5;
+
+    /** 速度上限：再快就不是给人玩的了 */
+    private static final int MAX_MOVES_PER_SECOND = 15;
+
     private final int cols;
     private final int rows;
-    private final int movesPerSecond;
     private final int ticksPerSecond;
+    private final int initialMovesPerSecond;
+    private final int initialSnakeLength;
     private final FoodSpawner foodSpawner;
+    private final ObstacleLayout obstacleLayout;
 
-    private final Snake snake;
     private final Deque<Direction> pendingTurns = new ArrayDeque<>();
 
+    private Snake snake;
+    private Set<GridPoint> obstacles = Set.of();
     private Direction direction = Direction.RIGHT;
     private State state = State.RUNNING;
     private GridPoint food;
+    private int movesPerSecond;
     private int score;
     private int moveAccumulator;
     private long moveCount;
 
-    /** 正式运行用的构造器：初始长度 3，食物随机放置 */
+    /** 正式运行用的构造器：初始长度 3，食物与障碍物都随机 */
     public SnakeGame(int cols, int rows, int movesPerSecond, int ticksPerSecond) {
-        this(cols, rows, movesPerSecond, ticksPerSecond, 3, randomSpawner(new Random()));
+        this(cols, rows, movesPerSecond, ticksPerSecond, 3,
+                FoodSpawner.random(new Random()), ObstacleLayout.none());
+    }
+
+    /** 指定初始长度与食物策略（测试常用），无障碍物 */
+    public SnakeGame(int cols, int rows, int movesPerSecond, int ticksPerSecond,
+                     int initialSnakeLength, FoodSpawner foodSpawner) {
+        this(cols, rows, movesPerSecond, ticksPerSecond, initialSnakeLength,
+                foodSpawner, ObstacleLayout.none());
     }
 
     /**
-     * 完整构造器，供单元测试指定初始长度与食物策略。
+     * 完整构造器。
      *
-     * @param initialSnakeLength 初始长度，必须能放进场地（从中心往左放得下）
+     * @param initialSnakeLength 初始长度，必须从中心往左放得下
      * @param foodSpawner        食物生成策略
+     * @param obstacleLayout     障碍物布局策略
      */
     public SnakeGame(int cols, int rows, int movesPerSecond, int ticksPerSecond,
-                     int initialSnakeLength, FoodSpawner foodSpawner) {
+                     int initialSnakeLength, FoodSpawner foodSpawner, ObstacleLayout obstacleLayout) {
         if (cols < 3 || rows < 3) {
             throw new IllegalArgumentException("游戏区域至少 3 x 3");
         }
@@ -77,17 +102,52 @@ public final class SnakeGame {
 
         this.cols = cols;
         this.rows = rows;
-        this.movesPerSecond = movesPerSecond;
         this.ticksPerSecond = ticksPerSecond;
+        this.initialMovesPerSecond = movesPerSecond;
+        this.initialSnakeLength = initialSnakeLength;
         this.foodSpawner = Objects.requireNonNull(foodSpawner, "foodSpawner 不能为 null");
-        this.snake = new Snake(new GridPoint(initialHeadCol, rows / 2),
-                initialSnakeLength, Direction.RIGHT);
+        this.obstacleLayout = Objects.requireNonNull(obstacleLayout, "obstacleLayout 不能为 null");
+
+        startNewRound();
+    }
+
+    /** 开一局新的：重建蛇、重摆障碍物、重放食物、分数与速度清零 */
+    public void reset() {
+        startNewRound();
+    }
+
+    private void startNewRound() {
+        this.direction = Direction.RIGHT;
+        this.state = State.RUNNING;
+        this.score = 0;
+        this.moveCount = 0;
+        this.moveAccumulator = 0;
+        this.movesPerSecond = initialMovesPerSecond;
+        this.pendingTurns.clear();
+        this.snake = new Snake(startHead(), initialSnakeLength, Direction.RIGHT);
+        this.obstacles = obstacleLayout.generate(cols, rows, startAreaCells());
         this.food = spawnFood();
     }
 
-    /** 在所有空格子里随机挑一个 */
-    private static FoodSpawner randomSpawner(Random random) {
-        return (freeCells, head) -> freeCells.get(random.nextInt(freeCells.size()));
+    private GridPoint startHead() {
+        return new GridPoint(cols / 2, rows / 2);
+    }
+
+    /**
+     * 出生区：蛇开局占的位置，加上上方一格、下方一格，以及头前方三格。
+     *
+     * <p>障碍物生成器必须避开这一片，否则一开局蛇就撞死在障碍物上。
+     */
+    private Set<GridPoint> startAreaCells() {
+        Set<GridPoint> cells = new HashSet<>();
+        GridPoint head = startHead();
+        for (int offset = -3; offset < initialSnakeLength; offset++) {
+            int col = head.col() - offset;
+            cells.add(new GridPoint(col, head.row()));
+            cells.add(new GridPoint(col, head.row() - 1));
+            cells.add(new GridPoint(col, head.row() + 1));
+        }
+        return cells;
     }
 
     /**
@@ -129,9 +189,9 @@ public final class SnakeGame {
     }
 
     /**
-     * 走一格。判定顺序很重要：先看墙，再看自己，最后才处理吃食物。
+     * 走一格。判定顺序很重要：**墙 → 障碍物 → 自己 → 吃食物**。
      *
-     * <p>自撞里有个经典细节：**不吃食物的时候，尾巴会在这一步让开**，
+     * <p>自撞里有个经典细节：不吃食物的时候，尾巴会在这一步让开，
      * 所以"蛇头进入尾巴当前所在的格子"是合法的，不算撞。漏掉这条，
      * 玩家贴着尾巴走就会莫名其妙地死。
      */
@@ -141,6 +201,10 @@ public final class SnakeGame {
 
         if (!isInside(nextHead)) {
             state = State.HIT_WALL;
+            return;
+        }
+        if (obstacles.contains(nextHead)) {
+            state = State.HIT_OBSTACLE;
             return;
         }
 
@@ -155,11 +219,19 @@ public final class SnakeGame {
             // 必须在 move 之前标记生长，否则尾巴会先被砍掉，蛇就长不起来了
             snake.grow();
             score++;
+            speedUpIfNeeded();
         }
         snake.move(direction);
         moveCount++;
         if (willEat) {
             food = spawnFood();
+        }
+    }
+
+    /** 每吃满 5 个食物提速一档，直到上限 */
+    private void speedUpIfNeeded() {
+        if (score % SCORE_PER_SPEEDUP == 0 && movesPerSecond < MAX_MOVES_PER_SECOND) {
+            movesPerSecond++;
         }
     }
 
@@ -180,18 +252,17 @@ public final class SnakeGame {
     }
 
     /**
-     * 重新放置食物：把所有没被蛇占据的格子列出来，交给策略挑一个。
+     * 重新放置食物：把所有没被蛇和障碍物占据的格子列出来，交给策略挑一个。
      *
-     * <p>这里用的是"枚举全部空格再挑"，而不是"随机取一个格子、撞上蛇就重抽"。
-     * 后者在蛇很长的时候可能连续抽中很多次才成功，极端情况下甚至抽不出来
-     * （虽然概率极低）。枚举法最多扫描一遍场地，行为稳定可预测。
+     * <p>这里用的是"枚举全部空格再挑"，而不是"随机取一个格子、撞上就重抽"。
+     * 后者在场地快被占满时可能连续抽不中，行为不可预测。枚举法最多扫描一遍场地。
      */
     private GridPoint spawnFood() {
         List<GridPoint> freeCells = new ArrayList<>();
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
                 GridPoint point = new GridPoint(col, row);
-                if (!snake.occupies(point)) {
+                if (!snake.occupies(point) && !obstacles.contains(point)) {
                     freeCells.add(point);
                 }
             }
@@ -225,6 +296,11 @@ public final class SnakeGame {
         return snake.occupies(point);
     }
 
+    /** 障碍物坐标（不可变集合） */
+    public Set<GridPoint> obstacles() {
+        return obstacles;
+    }
+
     /** 当前食物的位置；场地被填满时可能为 null */
     public GridPoint food() {
         return food;
@@ -233,6 +309,11 @@ public final class SnakeGame {
     /** 已经吃到几个食物 */
     public int score() {
         return score;
+    }
+
+    /** 当前每秒移动多少格（吃到食物后会提升） */
+    public int movesPerSecond() {
+        return movesPerSecond;
     }
 
     public Direction direction() {

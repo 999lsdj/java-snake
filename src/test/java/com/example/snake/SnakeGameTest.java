@@ -3,6 +3,8 @@ package com.example.snake;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
+import java.util.Set;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -186,5 +188,73 @@ class SnakeGameTest {
         assertEquals(SnakeGame.State.RUNNING, game.state(), "尾巴会让开，所以不算撞");
         assertEquals(new GridPoint(8, 10), game.head());
         assertEquals(4, game.moveCount());
+    }
+
+    @Test
+    @DisplayName("撞到障碍物：停在原地，状态变成 HIT_OBSTACLE")
+    void stopsAtObstacle() {
+        Set<GridPoint> walls = Set.of(new GridPoint(11, 10));
+        SnakeGame game = new SnakeGame(20, 20, 60, 60, 3, foodToTheRight(),
+                (cols, rows, avoid) -> walls);
+
+        game.tick();
+
+        assertEquals(SnakeGame.State.HIT_OBSTACLE, game.state());
+        assertEquals(new GridPoint(10, 10), game.head(), "撞到障碍物时蛇头停在原地");
+        assertEquals(0, game.moveCount());
+    }
+
+    @Test
+    @DisplayName("食物不会落在障碍物上")
+    void foodAvoidsObstacles() {
+        Set<GridPoint> walls = Set.of(new GridPoint(15, 15), new GridPoint(16, 16));
+        SnakeGame game = new SnakeGame(20, 20, 60, 60, 3, foodToTheRight(),
+                (cols, rows, avoid) -> walls);
+
+        for (int i = 0; i < 5; i++) {
+            game.tick();
+            assertFalse(walls.contains(game.food()), "食物不能落在障碍物上");
+        }
+    }
+
+    @Test
+    @DisplayName("每吃满 5 个食物提速一档")
+    void speedsUpEveryFiveFoods() {
+        // 每秒 8 格、每秒 8 帧：一次 tick 走一格，速度也留在可提升的区间里
+        SnakeGame game = new SnakeGame(40, 28, 8, 8, 3, foodToTheRight());
+
+        for (int i = 0; i < 4; i++) {
+            game.tick();
+        }
+        assertEquals(8, game.movesPerSecond(), "还没到 5 个，不提速");
+
+        game.tick();
+        assertEquals(9, game.movesPerSecond(), "吃到第 5 个，提速一档");
+
+        for (int i = 0; i < 5; i++) {
+            game.tick();
+        }
+        assertEquals(10, game.movesPerSecond(), "吃到第 10 个，再提速一档");
+    }
+
+    @Test
+    @DisplayName("重开后一切回到开局：状态、分数、长度、速度、位置")
+    void resetStartsANewRound() {
+        SnakeGame game = new SnakeGame(20, 20, 60, 60, 3, foodToTheRight());
+        for (int i = 0; i < 4; i++) {
+            game.tick();
+        }
+        assertEquals(4, game.score());
+
+        game.reset();
+
+        assertEquals(SnakeGame.State.RUNNING, game.state());
+        assertEquals(0, game.score());
+        assertEquals(3, game.snakeLength());
+        assertEquals(0, game.moveCount());
+        assertEquals(60, game.movesPerSecond());
+        assertEquals(new GridPoint(10, 10), game.head());
+        assertEquals(Direction.RIGHT, game.direction());
+        assertFalse(game.isOccupied(game.food()), "重开后食物要重新落在一个空格上");
     }
 }
