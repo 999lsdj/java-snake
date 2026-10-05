@@ -31,6 +31,7 @@ public final class GamePanel extends JPanel {
     private static final Color HUD_BACKGROUND = new Color(0x161C24);
     private static final Color SNAKE_HEAD = new Color(0x6EE7B7);
     private static final Color SNAKE_BODY = new Color(0x2F9E6B);
+    private static final Color FOOD = new Color(0xF0883E);
     private static final Color TEXT = new Color(0xE6EDF3);
     private static final Color MUTED = new Color(0x8B949E);
     private static final Color WARNING = new Color(0xF97583);
@@ -85,9 +86,10 @@ public final class GamePanel extends JPanel {
                 RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
         drawGrid(g2);
+        drawFood(g2);
         drawSnake(g2);
         drawHud(g2);
-        if (game.state() == SnakeGame.State.HIT_WALL) {
+        if (game.state() != SnakeGame.State.RUNNING) {
             drawGameOverHint(g2);
         }
         countFrame();
@@ -119,14 +121,27 @@ public final class GamePanel extends JPanel {
         }
     }
 
+    /** 食物画成圆形，和方形的蛇一眼就能区分开 */
+    private void drawFood(Graphics2D g2) {
+        GridPoint food = game.food();
+        if (food == null) {
+            return;
+        }
+        g2.setColor(FOOD);
+        int size = GameConfig.TILE_SIZE - 6;
+        g2.fillOval(food.col() * GameConfig.TILE_SIZE + 3,
+                GameConfig.HUD_HEIGHT + food.row() * GameConfig.TILE_SIZE + 3,
+                size, size);
+    }
+
     private void drawHud(Graphics2D g2) {
         g2.setColor(HUD_BACKGROUND);
         g2.fillRect(0, 0, getWidth(), GameConfig.HUD_HEIGHT);
 
         g2.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 15));
         g2.setColor(TEXT);
-        g2.drawString("长度 " + game.snakeLength()
-                + "    移动 " + game.moveCount() + " 格"
+        g2.drawString("分数 " + game.score()
+                + "    长度 " + game.snakeLength()
                 + "    方向 " + arrow(game.direction())
                 + "    实测 " + fps + " fps", 12, 25);
 
@@ -142,8 +157,13 @@ public final class GamePanel extends JPanel {
         g2.setColor(new Color(0x11, 0x14, 0x1A, 0xCC));
         g2.fillRect(0, top, getWidth(), getHeight() - top);
 
-        String title = "撞到墙了！";
-        String sub = "关掉窗口再来一次（M4 会加重新开始按钮）";
+        String title = switch (game.state()) {
+            case HIT_WALL -> "撞到墙了！";
+            case HIT_SELF -> "咬到自己了！";
+            case WON -> "整块场地都被你填满了！";
+            case RUNNING -> "";
+        };
+        String sub = "本局得分 " + game.score() + "（M4 会加 R 键快速重开）";
 
         g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 32));
         int titleWidth = g2.getFontMetrics().stringWidth(title);
