@@ -13,14 +13,14 @@
 
 | 下载哪个 | 适合谁 | 怎么用 |
 | --- | --- | --- |
-| `java-snake-1.0.0.jar`（28 KB） | 电脑上已经装了 Java 17 或更高版本 | 双击，或 `java -jar java-snake-1.0.0.jar` |
-| `java-snake-1.0.0-windows-x64.zip`（22 MB） | **没装 Java** 的人，Windows 系统 | 解压后双击 `java-snake.exe`，自带运行时 |
+| `java-snake-<版本>.jar`（约 28 KB） | 电脑上已经装了 Java 17 或更高版本 | 双击，或 `java -jar java-snake-<版本>.jar` |
+| `java-snake-<版本>-windows-x64.zip`（约 22 MB） | **没装 Java** 的人，Windows 系统 | 解压后双击 `java-snake.exe`，自带运行时 |
 
 **从源码构建**（需要 JDK 17 和 Maven）：
 
 ```
 mvn clean package
-java -jar target/java-snake-1.0.0.jar
+java -jar target/java-snake-1.1.0.jar
 ```
 
 构建完之后可以跑 `tools\deploy.ps1` 把 jar 复制到 `dist\`，然后：
@@ -34,6 +34,7 @@ java -jar target/java-snake-1.0.0.jar
 | 操作 | 效果 |
 | --- | --- |
 | 方向键 | 转向（不能 180 度掉头，连续快速转向会被缓存） |
+| 空格 | 暂停 / 继续（暂停时画面变暗，时间完全静止） |
 | R 键 | 游戏结束后立刻重开一局 |
 
 - 吃到食物：蛇身加长一格、分数 +1
@@ -82,6 +83,7 @@ java -jar target/java-snake-1.0.0.jar
 | M3 | 食物、成长、分数、自撞判定 |
 | M4 | 结束画面、R 键快速重开、打包发布 |
 | M5 | 障碍物、难度递增、最高分存档 |
+| M6 | 空格暂停 |
 
 ## 测试
 

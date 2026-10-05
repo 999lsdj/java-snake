@@ -48,7 +48,7 @@ Java 17 + Swing 写的贪吃蛇，第一个用于简历展示的开源项目。
 ```
 mvn clean package                                                      编译、跑测试、打包
 mvn test                                                               只跑测试
-java -jar target/java-snake-1.0.0.jar                                  运行游戏
+java -jar target/java-snake-1.1.0.jar                                  运行游戏
 java -cp target/classes com.example.snake.Main --selftest              自检（1.5 秒后自动退出）
 ```
 

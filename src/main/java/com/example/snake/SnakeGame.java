@@ -59,6 +59,7 @@ public final class SnakeGame {
     private Set<GridPoint> obstacles = Set.of();
     private Direction direction = Direction.RIGHT;
     private State state = State.RUNNING;
+    private boolean paused;
     private GridPoint food;
     private int movesPerSecond;
     private int score;
@@ -119,6 +120,7 @@ public final class SnakeGame {
     private void startNewRound() {
         this.direction = Direction.RIGHT;
         this.state = State.RUNNING;
+        this.paused = false;
         this.score = 0;
         this.moveCount = 0;
         this.moveAccumulator = 0;
@@ -158,7 +160,7 @@ public final class SnakeGame {
      * 比如 8 格/秒、60 帧/秒时，平均每 7.5 帧走一格。
      */
     public void tick() {
-        if (state != State.RUNNING) {
+        if (state != State.RUNNING || paused) {
             return;
         }
         moveAccumulator += movesPerSecond;
@@ -173,7 +175,7 @@ public final class SnakeGame {
      * 下一次移动前，这样"按下按键的时刻"和"蛇转向的时刻"就解耦了。
      */
     public void requestDirection(Direction requested) {
-        if (state != State.RUNNING || requested == null) {
+        if (state != State.RUNNING || paused || requested == null) {
             return;
         }
         // 以"最后一次已计划的转向"为基准来判断，而不是以当前方向为基准，
@@ -186,6 +188,28 @@ public final class SnakeGame {
             return;
         }
         pendingTurns.addLast(requested);
+    }
+
+    /**
+     * 暂停 / 继续，由空格键触发。
+     *
+     * <p><b>为什么暂停不是一个 {@link State}？</b>因为这个枚举表达的是"这一局怎么结束的"，
+     * 除了 RUNNING 之外的四个值都是终局状态；而暂停是临时的、可以随时恢复的。混在一起会立刻带来两个坑：
+     * 一是绘制层要专门判断"这个非 RUNNING 状态到底要不要显示结束画面"，
+     * 二是"刚结束时保存最高分"的逻辑会把暂停误判成结束，暂停一下就存一次分。
+     * 所以这里用独立的布尔量：语义清楚，也不会污染结束状态的判定。
+     *
+     * <p>已经结束的局不允许暂停。
+     */
+    public void togglePause() {
+        if (state == State.RUNNING) {
+            paused = !paused;
+        }
+    }
+
+    /** 是否处于暂停状态 */
+    public boolean isPaused() {
+        return paused;
     }
 
     /**

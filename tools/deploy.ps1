@@ -40,6 +40,21 @@ try {
 
     $dist = Join-Path $repoRoot 'dist'
     New-Item -ItemType Directory -Force -Path $dist | Out-Null
+
+    # 清掉 dist 里的旧版本 jar，只留刚部署的这个。
+    # 路径先经过检查，确保删除范围不会跑出 dist 目录。
+    $distFull = [IO.Path]::GetFullPath($dist) + [IO.Path]::DirectorySeparatorChar
+    Get-ChildItem -Path $dist -Filter 'java-snake-*.jar' -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -ne $jar.Name } |
+        ForEach-Object {
+            $full = [IO.Path]::GetFullPath($_.FullName)
+            if (-not $full.StartsWith($distFull, [StringComparison]::OrdinalIgnoreCase)) {
+                throw "拒绝删除 dist 目录之外的路径：$full"
+            }
+            Remove-Item -LiteralPath $full -Force
+            Write-Output ("已清理旧版本: " + $_.Name)
+        }
+
     Copy-Item -LiteralPath $jar.FullName -Destination $dist -Force
 
     $deployed = Join-Path $dist $jar.Name

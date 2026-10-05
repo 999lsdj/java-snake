@@ -2,6 +2,7 @@ package com.example.snake;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Set;
 
@@ -256,5 +257,58 @@ class SnakeGameTest {
         assertEquals(new GridPoint(10, 10), game.head());
         assertEquals(Direction.RIGHT, game.direction());
         assertFalse(game.isOccupied(game.food()), "重开后食物要重新落在一个空格上");
+    }
+
+    @Test
+    @DisplayName("空格暂停：暂停期间时间静止，继续之后接着走")
+    void pauseStopsTheClock() {
+        SnakeGame game = oneMovePerTick(20, 20);
+        for (int i = 0; i < 3; i++) {
+            game.tick();
+        }
+        assertEquals(3, game.moveCount());
+
+        game.togglePause();
+        assertTrue(game.isPaused());
+        for (int i = 0; i < 10; i++) {
+            game.tick();
+        }
+        assertEquals(3, game.moveCount(), "暂停期间一帧都不该推进");
+
+        game.togglePause();
+        assertFalse(game.isPaused());
+        game.tick();
+        assertEquals(4, game.moveCount(), "继续之后接着走");
+    }
+
+    @Test
+    @DisplayName("暂停期间不接受转向，也不会排进队列")
+    void pauseBlocksDirectionInput() {
+        SnakeGame game = oneMovePerTick(20, 20);
+
+        game.togglePause();
+        game.requestDirection(Direction.UP);
+        assertEquals(0, game.pendingTurnCount(), "暂停时按键不该被排队");
+
+        game.togglePause();
+        game.tick();
+        assertEquals(Direction.RIGHT, game.direction(), "恢复后方向还是原来的");
+    }
+
+    @Test
+    @DisplayName("重开会解除暂停；已经结束的局不能暂停")
+    void resetClearsPauseAndFinishedGameIgnoresPause() {
+        SnakeGame game = oneMovePerTick(5, 5);
+
+        game.togglePause();
+        game.reset();
+        assertFalse(game.isPaused(), "重开应该自动解除暂停");
+
+        for (int i = 0; i < 3; i++) {
+            game.tick();
+        }
+        assertEquals(SnakeGame.State.HIT_WALL, game.state());
+        game.togglePause();
+        assertFalse(game.isPaused(), "已经结束的局不该能暂停");
     }
 }

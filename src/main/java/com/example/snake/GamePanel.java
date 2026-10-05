@@ -52,6 +52,9 @@ public final class GamePanel extends JPanel {
     /** EDT 立下的重开旗子，由游戏线程消费 */
     private volatile boolean restartRequested;
 
+    /** EDT 立下的暂停旗子，由游戏线程消费 */
+    private volatile boolean pauseToggleRequested;
+
     /** FPS 统计只在 EDT 上读写 */
     private long fpsWindowStartNanos = System.nanoTime();
     private int framesInWindow;
@@ -70,8 +73,13 @@ public final class GamePanel extends JPanel {
         addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+                    pauseToggleRequested = true;
+                    return;
+                }
                 if (e.getKeyCode() == KeyEvent.VK_R) {
-                    if (game.state() != SnakeGame.State.RUNNING) {
+                    // 结束时可以重开；暂停时也允许重开，省得先按空格再按 R
+                    if (game.state() != SnakeGame.State.RUNNING || game.isPaused()) {
                         restartRequested = true;
                     }
                     return;
@@ -102,6 +110,10 @@ public final class GamePanel extends JPanel {
             game.reset();
             lastState = SnakeGame.State.RUNNING;
         }
+        if (pauseToggleRequested) {
+            pauseToggleRequested = false;
+            game.togglePause();
+        }
 
         game.tick();
 
@@ -131,6 +143,8 @@ public final class GamePanel extends JPanel {
         drawHud(g2);
         if (game.state() != SnakeGame.State.RUNNING) {
             drawGameOverScreen(g2);
+        } else if (game.isPaused()) {
+            drawPauseScreen(g2);
         }
         countFrame();
     }
@@ -202,9 +216,36 @@ public final class GamePanel extends JPanel {
 
         g2.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
         g2.setColor(MUTED);
-        String hint = game.state() == SnakeGame.State.RUNNING ? "方向键转向" : "按 R 重新开始";
+        String hint;
+        if (game.state() != SnakeGame.State.RUNNING) {
+            hint = "按 R 重新开始";
+        } else if (game.isPaused()) {
+            hint = "空格继续";
+        } else {
+            hint = "方向键转向　空格暂停";
+        }
         int width = g2.getFontMetrics().stringWidth(hint);
         g2.drawString(hint, getWidth() - width - 12, 26);
+    }
+
+    /** 暂停画面：压暗 + 提示，和结束画面用同一套视觉语言 */
+    private void drawPauseScreen(Graphics2D g2) {
+        int top = GameConfig.HUD_HEIGHT;
+        g2.setColor(new Color(0x11, 0x14, 0x1A, 0xCC));
+        g2.fillRect(0, top, getWidth(), getHeight() - top);
+
+        String title = "已暂停";
+        String sub = "按空格继续　按 R 重新开始";
+
+        g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 34));
+        int titleWidth = g2.getFontMetrics().stringWidth(title);
+        g2.setColor(SNAKE_HEAD);
+        g2.drawString(title, (getWidth() - titleWidth) / 2, getHeight() / 2 - 10);
+
+        g2.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 16));
+        int subWidth = g2.getFontMetrics().stringWidth(sub);
+        g2.setColor(TEXT);
+        g2.drawString(sub, (getWidth() - subWidth) / 2, getHeight() / 2 + 34);
     }
 
     private void drawGameOverScreen(Graphics2D g2) {
