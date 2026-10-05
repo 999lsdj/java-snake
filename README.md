@@ -9,19 +9,25 @@
 
 ## 下载与运行
 
-**玩家**：到 [Releases](https://github.com/999lsdj/java-snake/releases/latest) 下载 `java-snake-1.0.0.jar`，
-双击即可；命令行运行也可以：
+到 [Releases](https://github.com/999lsdj/java-snake/releases/latest) 下载，两种选一种：
 
-```
-java -jar java-snake-1.0.0.jar
-```
+| 下载哪个 | 适合谁 | 怎么用 |
+| --- | --- | --- |
+| `java-snake-1.0.0.jar`（28 KB） | 电脑上已经装了 Java 17 或更高版本 | 双击，或 `java -jar java-snake-1.0.0.jar` |
+| `java-snake-1.0.0-windows-x64.zip`（22 MB） | **没装 Java** 的人，Windows 系统 | 解压后双击 `java-snake.exe`，自带运行时 |
 
-**开发者**：克隆仓库后自行构建（需要 JDK 17 和 Maven）：
+**从源码构建**（需要 JDK 17 和 Maven）：
 
 ```
 mvn clean package
 java -jar target/java-snake-1.0.0.jar
 ```
+
+构建完之后可以跑 `tools\deploy.ps1` 把 jar 复制到 `dist\`，然后：
+
+- 双击根目录的 `java-snake.bat`（Windows）或执行 `./java-snake.sh`（Linux / macOS）启动游戏
+- 跑 `tools\create-shortcut.ps1` 在桌面生成快捷方式
+- 跑 `tools\build-app-image.ps1` 生成"自带运行时的免安装版"和分享用的 zip
 
 ## 玩法
 
@@ -85,6 +91,18 @@ mvn test
 
 29 个测试覆盖：游戏循环的定步长换算、方向与反向判定、蛇身的生长与移动、
 吃食物、四种结束原因、贴着尾巴走的合法性、速度递增、无障碍物时的出生区约束、存档的读写与容错。
+
+## 工具脚本
+
+| 脚本 | 作用 |
+| --- | --- |
+| `tools/deploy.ps1` | 打包并把 jar 复制到 `dist/`（`target/` 会被 `mvn clean` 删掉，不能把快捷方式指向那里） |
+| `tools/create-shortcut.ps1` | 在**当前这台机器**上按实际路径生成桌面快捷方式 |
+| `tools/build-app-image.ps1` | 用 jpackage 生成免安装版并打成 zip，供分享 |
+
+**为什么仓库里没有 `.lnk` 快捷方式文件？** 因为 `.lnk` 里存的是绝对路径（指向你自己的
+`javaw.exe` 和 jar），换台机器就打不开，而且二进制文件进 git 也无法比对差异。
+所以进仓库的是"生成快捷方式的脚本"，快捷方式本身由每台机器自己生成。
 
 ## 许可
 

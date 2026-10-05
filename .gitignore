@@ -1,6 +1,11 @@
 # Maven 编译产物
 target/
 
+# 部署产物：打包好的 jar、jpackage 生成的免安装版、压缩包
+# 这些都能由 tools/deploy.ps1 和 tools/build-app-image.ps1 重新生成，所以不入库
+dist/
+build/
+
 # 编译出的 class 文件
 *.class
 

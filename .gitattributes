@@ -1,0 +1,10 @@
+# 换行符规则：脚本在别的机器上也要能跑，所以显式规定
+# （Windows 的 core.autocrlf=true 会把文本文件检出成 CRLF，而 .sh 在 Linux 上不能有 CR）
+*.sh  text eol=lf
+*.bat text eol=crlf
+
+# 二进制文件不要让 git 试图转换
+*.png binary
+*.ico binary
+*.jar binary
+*.zip binary
