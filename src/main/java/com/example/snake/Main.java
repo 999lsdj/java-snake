@@ -31,6 +31,8 @@ public final class Main {
         SwingUtilities.invokeAndWait(() -> {
             SnakeFrame frame = new SnakeFrame();
             frame.setVisible(true);
+            // 窗口显示之后才拿得到键盘焦点，否则方向键不会送进画布
+            frame.gamePanel().requestFocusInWindow();
             frameRef.set(frame);
         });
 

@@ -14,7 +14,11 @@ public final class SnakeFrame extends JFrame {
 
     private static final long serialVersionUID = 1L;
 
-    private final GamePanel gamePanel = new GamePanel();
+    /** 游戏状态放在窗口里，画布只负责显示与输入 */
+    private final SnakeGame game = new SnakeGame(
+            GameConfig.COLS, GameConfig.ROWS, GameConfig.MOVES_PER_SECOND, GameConfig.TARGET_FPS);
+
+    private final GamePanel gamePanel = new GamePanel(game);
 
     public SnakeFrame() {
         super(GameConfig.TITLE);
